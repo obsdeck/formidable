@@ -119,6 +119,9 @@ IncomingForm.prototype.write = function(buffer) {
   this.emit('progress', this.bytesReceived, this.bytesExpected);
 
   var bytesParsed = this._parser.write(buffer);
+  // YAMMER CHANGES: we track the number of bytes parsed, after writing to the 
+  // parser so that we can add this number to the parser index to get the actual position in the stream
+  this.bytesParsed += bytesParsed;
   if (bytesParsed !== buffer.length) {
     this._error(new Error('parser error, '+bytesParsed+' of '+buffer.length+' bytes parsed'));
   }
@@ -228,6 +231,7 @@ IncomingForm.prototype._error = function(err) {
 IncomingForm.prototype._parseContentLength = function() {
   if (this.headers['content-length']) {
     this.bytesReceived = 0;
+    this.bytesParsed = 0;
     this.bytesExpected = parseInt(this.headers['content-length'], 10);
   }
 };
@@ -287,7 +291,7 @@ IncomingForm.prototype._initMultipart = function(boundary) {
   };
 
   parser.onHeadersEnd = function(headersLength) {
-    part.headersLength = headersLength;
+    part.headersLength = self.bytesParsed + headersLength;
     self.onPart(part);
   };
 
